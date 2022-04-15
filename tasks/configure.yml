@@ -1,0 +1,90 @@
+
+---
+- name: Zimbra configure
+  block:
+    - name: Set trusted IP (Configure Zimbra block)
+      shell: source /opt/zimbra/.bashrc && ./zmprov mcf +zimbraMailTrustedIP 127.0.0.1 +zimbraMailTrustedIP "{{ ansible_default_ipv4.address }}"
+      args:
+        executable: /bin/bash
+        chdir: /opt/zimbra/bin/
+      notify: Restart zimbra
+    
+    # https://wiki.zimbra.com/wiki/Enforcing_a_match_between_FROM_address_and_sasl_username_8.5
+    - name: Update zimbraMtaSmtpdRejectUnlistedRecipient & zimbraMtaSmtpdRejectUnlistedSender (Zimbra configure block)
+      shell: "{{ item }}"
+      loop: 
+        - source /opt/zimbra/.bashrc && ./zmprov mcf zimbraMtaSmtpdRejectUnlistedRecipient yes
+        - source /opt/zimbra/.bashrc && ./zmprov mcf zimbraMtaSmtpdRejectUnlistedSender yes
+        - source /opt/zimbra/.bashrc && ./zmmtactl restart
+        - source /opt/zimbra/.bashrc && ./zmconfigdctl restart
+      args:
+        executable: /bin/bash
+        chdir: /opt/zimbra/bin/
+
+    - name: Set SMTP banner for rDNS (Zimbra configure block)
+      shell: "source /opt/zimbra/.bashrc && ./zmprov ms {{ zimbra_fqdn }} zimbraMtaSmtpdBanner {{ zimbra_fqdn }}"
+      args:
+        executable: /bin/bash
+        chdir: /opt/zimbra/bin/
+      notify: Reload postfix
+
+    - name: Set the zimbraMtaSmtpdSenderLoginMaps portion (Zimbra configure block)
+      shell: source /opt/zimbra/.bashrc && ./zmprov mcf zimbraMtaSmtpdSenderLoginMaps  proxy:ldap:/opt/zimbra/conf/ldap-slm.cf +zimbraMtaSmtpdSenderRestrictions reject_authenticated_sender_login_mismatch
+      args:
+        executable: /bin/bash
+        chdir: /opt/zimbra/bin/
+      notify: Reload postfix
+
+    - name: Set smtpd_sender_restrictions (Zimbra configure block)
+      replace:
+        path: /opt/zimbra/conf/zmconfigd/smtpd_sender_restrictions.cf
+        regexp: "permit_mynetworks"
+        replace: "permit_mynetworks, reject_sender_login_mismatch"
+      notify: Reload postfix
+      
+    - name: Limit maximum recipients (Zimbra configure block)
+      shell: source /opt/zimbra/.bashrc && ./postconf -e smtpd_recipient_limit={{ zimbra_smtpd_recipient_limit }}
+      args:
+        executable: /bin/bash
+        chdir: /opt/zimbra/bin/
+      notify: Reload postfix
+
+    - name: Set MTA trust networking (Zimbra configure block)
+      shell: source /opt/zimbra/.bashrc && ./zmprov ms {{ zimbra_fqdn }} zimbraMtaMyNetworks '127.0.0.0/8 {{ ansible_default_ipv4.address }}/32'
+      args:
+        executable: /bin/bash
+        chdir: /opt/zimbra/bin/
+      notify: Reload postfix
+
+    - name: Enable PTR/Reverse DNS Lookup for Incoming Email (Zimbra configure block)
+      shell: "{{ item }}"
+      loop:
+        - source /opt/zimbra/.bashrc && ./zmprov mcf +zimbraMtaRestriction "reject_unknown_client_hostname"
+        - source /opt/zimbra/.bashrc && ./zmprov mcf +zimbraMtaRestriction "reject_unknown_sender_domain"
+      args:
+        executable: /bin/bash
+        chdir: /opt/zimbra/bin/
+      notify: Reload postfix
+
+    - name: Configure antispam (Zimbra configure block)
+      shell: "{{ item }}"
+      loop:
+        - source /opt/zimbra/.bashrc && ./zmlocalconfig -e antispam_enable_rule_updates=true
+        - source /opt/zimbra/.bashrc && ./zmlocalconfig -e antispam_enable_restarts=true
+        - source /opt/zimbra/.bashrc && ./zmamavisdctl restart
+        - source /opt/zimbra/.bashrc && ./zmmtactl restart
+      args:
+        executable: /bin/bash
+        chdir: /opt/zimbra/bin/
+
+    - name: Set ssh port if not use default port (Zimbra configure block)
+      shell: source /opt/zimbra/.bashrc && ./zmprov ms {{ zimbra_fqdn }} zimbraRemoteManagementPort {{ ansible_port }}
+      args:
+        executable: /bin/bash
+        chdir: /opt/zimbra/bin/
+      when: ansible_port != 22
+
+  become_user: zimbra
+  tags:
+    - configure
+...

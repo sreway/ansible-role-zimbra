@@ -1,0 +1,223 @@
+---
+- name: Include variables
+  include_vars:
+    file: ubuntu.yml
+  tags:
+    - install
+    - prepare
+
+- name: Ensure system update
+  apt:
+    upgrade: dist
+    update_cache: yes
+  tags:
+    - prepare
+
+- name: Ensure utilities and dependencies installed
+  apt:
+    name:
+      - bash-completion
+      - tmux
+      - telnet
+      - dnsutils
+      - tcpdump
+      - wget
+      - lsof
+      - rsync
+      - acl
+    state: present
+    update_cache: yes
+  tags:
+    - prepare
+
+
+- name: Gather package facts
+  package_facts:
+  tags:
+    - prepare
+
+- name: Configure static networking
+  block:
+    - name: Configure netplan (Configure static networking block)
+      template:
+        src: 01-netcfg.yaml.j2
+        dest: /etc/netplan/01-netcfg.yaml
+    - name: Apply netplan (Configure static networking block)
+      command: netplan apply
+  tags:
+    - prepare
+
+- name: Configure time zone
+  community.general.timezone:
+    name: "{{ zimbra_timezone }}"
+  tags:
+    - prepare
+
+- name: Configure NTP
+  block:
+    - name: Disable systemd-timesyncd service (Configure NTP block)
+      service: 
+        name: systemd-timesyncd
+        state: stopped
+        enabled: no
+
+    - name: Mask systemd-timesyncd service (Configure NTP block)
+      command: systemctl mask systemd-timesyncd
+
+    - name: Ensure chrony installed (Configure NTP block)
+      apt:
+        name: chrony
+        state: present
+        update_cache: yes
+  tags:
+    - prepare
+
+- name: Set hostname
+  hostname:
+    name: "{{ zimbra_fqdn }}"
+  tags:
+    - prepare
+
+- name: Configure hosts file.
+  template:
+    src: hosts.j2
+    dest: /etc/hosts
+  tags:
+    - prepare
+
+- name: Disable ufw
+  block:
+    - name: Disable ufw (Disable ufw block)
+      command: ufw disable
+
+    - name: Disable ufw service (Disable ufw block)
+      service:
+        name: ufw
+        state: stopped
+        enabled: no
+
+    - name: Mask ufw service (Disable ufw block)
+      command: systemctl mask ufw
+  tags:
+    - prepare
+  when: "'ufw' in ansible_facts.packages"
+
+
+- name: Disable postfix
+  service:
+    name: postfix
+    state: stopped
+    enabled: no
+  tags:
+    - prepare
+  when: "'postfix' in ansible_facts.packages"
+
+
+- name: Configure local dns
+  block:
+    - name: Disable systemd-resolved service (Configure local dns block)
+      service:
+        name: systemd-resolved
+        state: stopped
+        enabled: no
+
+    - name: Mask systemd-resolved service (Configure local dns block)
+      command: systemctl mask systemd-resolved
+
+    - name: Ensure dnsmasq installed (Configure local dns block)
+      apt:
+        name: dnsmasq
+        state: present
+        update_cache: yes
+
+    - name: Configure resolv file (Configure local dns block)
+      template:
+        src: resolv.conf.j2
+        dest: /etc/resolv.conf
+
+    - name: Configure dnsmasq (Configure local dns block)
+      template:
+        src: dnsmasq.conf.j2
+        dest: /etc/dnsmasq.conf
+      notify: Restart dnsmasq
+  tags:
+    - prepare
+
+- meta: flush_handlers
+  tags:
+    - prepare
+
+- name: Zimbra install
+  block:
+    - name: Extract Zimbra installer (Zimbra install block)
+      unarchive:
+        src: "{{ zimbra_dist_url }}"
+        dest: /tmp/
+        remote_src: yes
+
+    - name: Сonfigure Zimbra install answer file for installer (Zimbra install block)
+      template:
+        src: zimbra_answers.txt.j2
+        dest: /tmp/zimbra_answers.txt
+
+    - name: Configure Zimbra install config file (Zimbra install block)
+      template:
+        src: zimbra_config.txt.j2
+        dest: /tmp/zimbra_config.txt
+                
+    - name: Run Zimbra installer phase 1 (Zimbra install block)
+      shell: ./install.sh -s < /tmp/zimbra_answers.txt
+      args:
+        chdir: /tmp/{{ zimbra_arhive_name }}/
+        executable: /bin/bash
+      async: 2100
+      poll: 0
+      register: install_zimbra_phase_1
+
+    - name: Check zimbra install phase 1 complete (Zimbra install block)
+      async_status:
+        jid: "{{ install_zimbra_phase_1.ansible_job_id }}"
+      register: install_zimbra_phase_1_job
+      until: install_zimbra_phase_1_job.finished
+      delay: 10
+      retries: 300
+
+    - name: Configure Clam AntiVirus Database (Zimbra install block)
+      template:
+        src: freshclam.conf.j2
+        dest: /opt/zimbra/conf/freshclam.conf.in
+        backup: yes
+      when: zimbra_clamav_configure
+
+    - name: Update Clam AntiVirus Database (Zimbra install block)
+      command:  /opt/zimbra/common/bin/freshclam --config-file=/opt/zimbra/conf/freshclam.conf.in -l {{ zimbra_freshclam_log_path }} --datadir={{ zimbra_clamv_database_directory }}
+      async: 2100
+      poll: 0
+      register: update_clamv_database
+      when: zimbra_clamav_configure
+      
+    - name: Check update Clam AntiVirus Database (Zimbra install block)
+      async_status:
+        jid: "{{ update_clamv_database.ansible_job_id }}"
+      register: update_clamv_database_job
+      until: update_clamv_database_job.finished
+      delay: 10
+      retries: 300
+      when: zimbra_clamav_configure
+
+    - name: Run zimbra installer phase 2 (Zimbra install block)
+      command: /opt/zimbra/libexec/zmsetup.pl -c /tmp/zimbra_config.txt
+      async: 2100
+      poll: 0
+      register: install_zimbra_phase_2
+
+    - name: Check zimbra install phase 2 complete (Zimbra install block)
+      async_status:
+        jid: "{{ install_zimbra_phase_2.ansible_job_id }}"
+      register: install_zimbra_phase_2_job
+      until: install_zimbra_phase_2_job.finished
+      delay: 10
+      retries: 300
+  tags:
+    - install
+...

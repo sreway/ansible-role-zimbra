@@ -1,0 +1,29 @@
+---
+- include_tasks: check-dns.yml
+  when: zimbra_check_dns_records
+  tags:
+    - prepare
+
+- include_tasks: setup.yml
+  when: ansible_distribution == "Ubuntu"
+  tags:
+    - prepare
+    - install
+
+- include_tasks: configure.yml
+  tags:
+    - configure
+
+- include_tasks: deploy-ssl.yml
+  when: zimbra_ssl_configure
+  tags:
+    - ssl
+
+- include_tasks: fail2ban.yml
+  when: zimbra_host_fail2ban_configure
+  tags:
+    - fail2ban
+
+- include_tasks: dkim.yml
+  when: zimbra_dkim_create
+...

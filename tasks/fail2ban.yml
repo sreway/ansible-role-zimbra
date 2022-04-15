@@ -1,0 +1,65 @@
+---
+- name: Fail2ban Configure
+  block:
+    - name: Install fail2ban (Fail2ban Configure block)
+      apt:
+        name: fail2ban
+        state: present
+        update_cache: yes
+
+    - name: Configure fail2ban jail.local (Fail2ban Configure block)
+      template:
+        src: jail.local.j2
+        dest: /etc/fail2ban/jail.local
+        owner: root
+        group: root
+        mode: 0644
+      notify: Restart fail2ban
+
+    - name: Configure fail2ban jail zimbra.local (Fail2ban Configure block)
+      template:
+        src: zimbra.local.j2
+        dest: /etc/fail2ban/jail.d/zimbra.local
+        owner: root
+        group: root
+        mode: 0644
+      notify: Restart fail2ban
+
+    - name: Configure fail2ban jail sshd.local (Fail2ban Configure block)
+      template:
+        src: sshd.local.j2
+        dest: /etc/fail2ban/jail.d/sshd.local
+        owner: root
+        group: root
+        mode: 0644
+      notify: Restart fail2ban
+
+    - name: Configure fail2ban filter zimbra-webmail.conf (Fail2ban Configure block)
+      template:
+        src: zimbra-webmail.conf.j2
+        dest: /etc/fail2ban/filter.d/zimbra-webmail.conf
+        owner: root
+        group: root
+        mode: 0644
+      notify: Restart fail2ban
+
+    - name: Configure fail2ban filter zimbra-smtp.conf (Fail2ban Configure block)
+      template:
+        src: zimbra-smtp.conf.j2
+        dest: /etc/fail2ban/filter.d/zimbra-smtp.conf
+        owner: root
+        group: root
+        mode: 0644
+      notify: Restart fail2ban
+
+    - name: Configure fail2ban filter zimbra-admin.conf (Fail2ban Configure block)
+      template:
+        src: zimbra-admin.conf.j2
+        dest: /etc/fail2ban/filter.d/zimbra-admin.conf
+        owner: root
+        group: root
+        mode: 0644
+      notify: Restart fail2ban
+  tags:
+    - fail2ban
+...

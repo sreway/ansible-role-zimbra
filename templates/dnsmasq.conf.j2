@@ -1,0 +1,17 @@
+{{ ansible_managed | comment }}
+
+{% for nameserver in zimbra_host_dnsmasq_nameservers %}
+server={{ nameserver }}
+{% endfor %}
+
+listen-address=127.0.0.1,{{ ansible_default_ipv4.address }}
+
+domain={{ zimbra_domain }}
+
+host-record={{ zimbra_fqdn }},{{ ansible_default_ipv4.address }}
+
+mx-host={{ zimbra_domain }},{{ zimbra_fqdn }},1
+
+addn-hosts=/etc/hosts
+
+cache-size=9500

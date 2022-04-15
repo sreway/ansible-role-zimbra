@@ -1,0 +1,26 @@
+---
+- name: Restart dnsmasq
+  service:
+    name: dnsmasq
+    state: restarted
+
+- name: Restart zimbra
+  shell: source /opt/zimbra/.bashrc && ./zmcontrol restart
+  args:
+    executable: /bin/bash
+    chdir: '/opt/zimbra/bin/'
+  become_user: zimbra
+  register: zm_start_result
+  failed_when: zm_start_result.stderr
+
+- name: Reload postfix
+  command: /opt/zimbra/bin/postfix reload
+  become_user: zimbra
+  register: postfix_reload_result
+  failed_when: postfix_reload_result.stderr
+
+- name: Restart fail2ban
+  service:
+    name: fail2ban
+    state: restarted
+...

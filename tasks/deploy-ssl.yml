@@ -1,0 +1,61 @@
+---
+- name: Deploy ssl cert
+  block:
+    - name: Create ssl directory
+      file:
+        path: /opt/zimbra/ssl/{{ zimbra_domain }}
+        state: directory
+        owner: zimbra
+        group: zimbra
+
+    - name: Set ssl private key (Deploy ssl cert block)
+      copy:
+        dest: /opt/zimbra/ssl/zimbra/commercial/commercial.key
+        content: "{{ zimbra_ssl.private_key }}"
+        owner: zimbra
+        group: zimbra
+        backup: yes
+
+    - name: Set ssl cert chain (Deploy ssl cert block)
+      copy:
+        dest: /opt/zimbra/ssl/{{ zimbra_domain }}/chain.pem
+        content: "{{ zimbra_ssl.full_chain }}"
+        owner: zimbra
+        group: zimbra
+
+    - name: Set ssl cert (Deploy ssl cert block)
+      copy:
+        dest: /opt/zimbra/ssl/{{ zimbra_domain }}/cert.pem
+        content: "{{ zimbra_ssl.cert }}"
+        owner: zimbra
+        group: zimbra
+
+    - name: Verification ssl cert (Deploy ssl cert block)
+      shell: source /opt/zimbra/.bashrc && /opt/zimbra/bin/zmcertmgr verifycrt comm /opt/zimbra/ssl/zimbra/commercial/commercial.key cert.pem chain.pem
+      args:
+        chdir:  /opt/zimbra/ssl/{{ zimbra_domain }}
+        executable: /bin/bash
+      register: verifycrt_result
+      failed_when: "'ERROR' in verifycrt_result.stdout"
+      become_user: zimbra
+      
+    - name: Deploy ssl cert (Deploy ssl cert block)
+      shell: source /opt/zimbra/.bashrc && /opt/zimbra/bin/zmcertmgr deploycrt comm cert.pem chain.pem
+      args:
+        chdir:  /opt/zimbra/ssl/{{ zimbra_domain }}
+        executable: /bin/bash
+      register: deploycrt_result
+      failed_when: "'ERROR' in deploycrt_result.stdout"
+      become_user: zimbra
+      notify: Restart zimbra
+
+    - name: Set redirect from http to https (Deploy ssl cert block)
+      shell: "source /opt/zimbra/.bashrc && ./zmprov ms {{ zimbra_fqdn }} zimbraReverseProxyMailMode redirect"
+      args:
+        chdir: /opt/zimbra/bin/
+        executable: /bin/bash
+      become_user: zimbra
+      notify: Restart zimbra
+  tags:
+    - ssl
+...

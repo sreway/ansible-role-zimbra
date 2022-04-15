@@ -1,0 +1,20 @@
+{{ ansible_managed | comment }}
+
+DatabaseDirectory {{ zimbra_clamv_database_directory }}
+UpdateLogFile {{ zimbra_freshclam_log_path }}
+PidFile /opt/zimbra/log/freshclam.pid
+DatabaseOwner zimbra
+
+{% if zimbra_clamav_private_mirrors is defined  %}
+{% for mirror in zimbra_clamav_private_mirrors %}
+PrivateMirror {{ mirror }}
+{% endfor %}
+ScriptedUpdates no
+{% else %}
+{% for mirror in zimbra_clamv_mirrors %}
+DatabaseMirror {{ mirror }}
+{% endfor %}
+{% endif %}
+Checks 12
+NotifyClamd /opt/zimbra/conf/clamd.conf
+SafeBrowsing no

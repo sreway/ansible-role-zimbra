@@ -1,0 +1,13 @@
+---
+- name: Create dkim record 
+  shell: source /opt/zimbra/.bashrc && ./zmdkimkeyutil -a -d {{ zimbra_domain }}
+  args:
+    chdir: /opt/zimbra/libexec/
+    executable: /bin/bash
+  become_user: zimbra
+  register: zm_dkim_result
+
+- name: DKIM record 
+  debug:
+    var: zm_dkim_result.stdout_lines
+...

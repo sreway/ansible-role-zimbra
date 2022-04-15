@@ -1,0 +1,32 @@
+{# Aggree license #}
+y
+{# Use Zimbra's package repository #}
+y
+{# Install zimbra-ldap #}
+{{ 'y' if zimbra_install_ldap else 'n' }}
+{# Install zimbra-logger #}
+{{ 'y' if zimbra_install_logger else 'n' }}
+{# Install zimbra-mta #}
+{{ 'y' if zimbra_install_mta else 'n' }}
+{# Install zimbra-dnscache #}
+{{ 'y' if zimbra_install_dnscache else 'n' }}
+{# Install zimbra-snmp #}
+{{ 'y' if zimbra_install_snmp else 'n' }}
+{# Install zimbra-store #}
+{{ 'y' if zimbra_install_store else 'n' }}
+{# Install zimbra-apache #}
+{{ 'y' if zimbra_install_apache else 'n' }}
+{# Install zimbra-spell #}
+{{ 'y' if zimbra_install_spell else 'n' }}
+{# Install zimbra-memcached #}
+{{ 'y' if zimbra_install_memcached else 'n' }}
+{# Install zimbra-proxy #}
+{{ 'y' if zimbra_install_proxy else 'n' }}
+{# Install zimbra-drive #}
+{{ 'y' if zimbra_install_drive else 'n' }}
+{# Install zimbra-imapd #}
+{{ 'y' if zimbra_install_imapd else 'n' }}
+{# Install zimbra-chat #}
+{{ 'y' if zimbra_install_chat else 'n' }}
+{# Confirm system change #}
+y

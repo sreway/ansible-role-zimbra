@@ -1,0 +1,4 @@
+---
+zimbra_arhive_name: zcs-8.8.15_GA_4179.UBUNTU20_64.20211118033954
+zimbra_dist_url: "https://files.zimbra.com/downloads/8.8.15_GA/{{ zimbra_arhive_name }}.tgz"
+...

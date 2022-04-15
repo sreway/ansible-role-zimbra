@@ -1,0 +1,40 @@
+---
+- name: Get public IP address
+  ipify_facts:
+  tags:
+    - prepare
+
+- name: Get dns records
+  set_fact:
+    dns_records:
+      a:  "{{ lookup('community.general.dig', zimbra_fqdn, 'qtype=A') }}"
+      mx: "{{ lookup('community.general.dig', zimbra_domain, 'qtype=MX') }}"
+      spf: "{{ lookup('community.general.dig', zimbra_domain, 'qtype=TXT') }}"
+      ptp: "{{ lookup('community.general.dig', ipify_public_ip, 'qtype=PTR') }}"
+  tags:
+    - prepare
+
+- name: Validate dns records
+  block:
+    - name: Validate A record (Validate dns records block)
+      debug:
+        msg: "{{ dns_records.a | ternary(dns_records.a, 'Incorrect A record for domain:' + zimbra_fqdn ) }}"
+      failed_when: dns_records.a != ipify_public_ip
+
+    - name: Validate MX record (Validate dns records block)
+      debug:
+        msg: "{{ dns_records.mx | ternary(dns_records.mx, 'Incorrect MX record for domain:' + zimbra_domain ) }}"
+      failed_when: not zimbra_fqdn in dns_records.mx
+
+    - name: Validate SPF record (Validate dns records block)
+      debug:
+        msg: "{{ dns_records.spf | ternary(zimbra_dns_required_spf_record, 'Incorrect SPF record for domain: ' + zimbra_domain ) }}"
+      failed_when: not zimbra_dns_required_spf_record in dns_records.spf
+    
+    - name: Validate PTR record (Validate dns records block)
+      debug:
+        msg: "{{ dns_records.ptp | ternary(dns_records.ptp, 'Incorrect PTR record for domain:' + dns_records.ptp ) }}"
+      failed_when: not zimbra_fqdn in dns_records.ptp
+  tags:
+    - prepare
+...

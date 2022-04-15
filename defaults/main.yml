@@ -1,0 +1,57 @@
+---
+zimbra_timezone: Europe/Moscow
+zimbra_domain:  example.com
+zimbra_fqdn:  mail.example.com
+zimbra_admin_password: some_password
+
+zimbra_install_ldap: true
+zimbra_install_logger: true
+zimbra_install_mta: true
+zimbra_install_dnscache: false
+zimbra_install_snmp: true
+zimbra_install_store: true
+zimbra_install_apache: true
+zimbra_install_spell: true
+zimbra_install_memcached: true
+zimbra_install_proxy: true
+zimbra_install_drive: false
+zimbra_install_imapd: false
+zimbra_install_chat: false
+
+zimbra_check_dns_records: false
+zimbra_dns_required_spf_record: "v=spf1 mx ~all"
+
+zimbra_host_dnsmasq_nameservers:
+  - 8.8.8.8
+  - 8.8.4.4
+
+# If zimbra_mailboxd_memory_mb is not defined, it is automatically calculated as follows: ansible_memtotal_mb / 4 | round | int 
+# zimbra_mailboxd_memory_mb: 983
+
+# If zimbra_system_memory_mb is not defined, it is automatically calculated as follows: ansible_memtotal_mb * 90 / 100 | round | int
+# zimbra_system_memory_mb: 3537
+
+zimbra_clamav_configure: false
+
+# If zimbra_clamav_private_mirrors is defined, a "PrivateMirror" is used instead of the "DatabaseMirror" parameter (zimbra_clamv_mirrors ignored)
+# zimbra_clamav_private_mirrors
+#   - https://example.com/clamav 
+
+zimbra_clamv_mirrors:
+  - db.us.clamav.net
+  - database.clamav.net
+
+zimbra_clamv_database_directory: /opt/zimbra/data/clamav/db
+zimbra_freshclam_log_path: /opt/zimbra/log/freshclam.log
+
+zimbra_dkim_create: false
+zimbra_host_fail2ban_configure: true
+zimbra_smtpd_recipient_limit: 20
+zimbra_ssl_configure: false
+
+# How get correct letsencrypt ssl certs for Zimbra: https://wiki.zimbra.com/wiki/Installing_a_LetsEncrypt_SSL_Certificate
+zimbra_ssl:
+  private_key: "PRIVATE_KEY_DATA"
+  full_chain: "FULL_CHAIN_DATA"
+  cert: "CERT_DATA"
+...
